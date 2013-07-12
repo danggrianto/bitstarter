@@ -20,6 +20,7 @@ References:
    - https://developer.mozilla.org/en-US/docs/JSON
    - https://developer.mozilla.org/en-US/docs/JSON#JSON_in_Firefox_2
 */
+var util = require('util');
 var fs = require('fs');
 var program = require('commander');
 var cheerio = require('cheerio');
@@ -65,6 +66,21 @@ var checkURL = function(result, checkfile){
 	return out;
 };
 
+//make synchronous call
+var buildfn = function(htmlFile){
+	var json2console = function(result, response){
+		if(result instanceof Error){
+			console.error('Error: '+util.format(response.message));
+		}else{
+			fs.writeFileSync(htmlFile, result);
+			var checkJson = checkHtmlFile(htmlFile, program.checks);
+			var outJson = JSON.stringify(checkJson, null,4);
+			console.log(outJson);
+			fs.unlink(htmlFile);
+		}
+	}
+	return json2console;
+};
 
 var clone = function(fn) {
     // Workaround for commander.js issue.
@@ -80,17 +96,14 @@ if(require.main == module) {
         .parse(process.argv);
     var fileHTML = program.file;
     if(program.url){
-	    fileHTML="web.html";
-	    var checkJson = restler.get(program.url).on('complete', function(result){
-		    //saving as html
-		    fs.writeFile(fileHTML, result);
-		    //return checkURL(result, program.checks);
-	    });
-	    console.log(checkJson);
+	    fileHTML="temp";
+	    var html2console = buildfn(fileHTML);
+	    restler.get(program.url).on('complete', html2console);
+    }else{
+    	var checkJson = checkHtmlFile(fileHTML, program.checks);
+    	var outJson = JSON.stringify(checkJson, null, 4);
+  	console.log(outJson);
     }
-    //var checkJson = checkHtmlFile(fileHTML, program.checks);
-//    var outJson = JSON.stringify(checkJson, null, 4);
-  //  console.log(outJson);
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
